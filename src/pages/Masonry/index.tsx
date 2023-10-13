@@ -1,12 +1,36 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import useMeasure from "react-use-measure";
 import { useTransition, a } from "@react-spring/web";
 import { shuffle } from "lodash";
+import clamp from "lodash.clamp";
+import { useSprings, animated } from "@react-spring/web";
+//@ts-ignore
+import swap from "lodash-move";
 
 import useMedia from "./useMedia";
 import data from "./data";
 
 import { List } from "./styles";
+import { useDrag } from "react-use-gesture";
+
+const fn =
+  (order: number[], active = false, originalIndex = 0, curIndex = 0, y = 0) =>
+  (index: number) =>
+    active && index === originalIndex
+      ? {
+          y: curIndex * 50 + y,
+          scale: 1.1,
+          zIndex: 1,
+          shadow: 15,
+          immediate: (key: string) => key === "y" || key === "zIndex",
+        }
+      : {
+          y: order.indexOf(index) * 50,
+          scale: 1,
+          zIndex: 0,
+          shadow: 1,
+          immediate: false,
+        };
 
 function Masonry() {
   // Hook1: Tie media queries to the number of columns
@@ -21,8 +45,8 @@ function Masonry() {
   const [items, set] = useState(data);
   // Hook4: shuffle data every 2 seconds
   useEffect(() => {
-    const t = setInterval(() => set(shuffle), 2000);
-    return () => clearInterval(t);
+    // const t = setInterval(() => set(shuffle), 2000);
+    // return () => clearInterval(t);
   }, []);
   // Hook5: Form a grid of stacked items using width & columns we got from hooks 1 & 2
   const [heights, gridItems] = useMemo(() => {
@@ -52,6 +76,29 @@ function Masonry() {
     trail: 25,
   });
   // Render the grid
+
+  const order = useRef(gridItems.map((_, index) => index)); // Store indicies as a local ref, this represents the item order
+  const [springs, api] = useSprings(gridItems.length, fn(order.current)); // Create springs, each corresponds to an item, controlling its transform, scale, etc.
+
+  const bind = useDrag(
+    ({ args: [originalIndex], active, movement: [x, y] }) => {
+      const curIndex = order.current.indexOf(originalIndex);
+
+      const curRow = clamp(
+        Math.round((curIndex * 100 + y) / 100),
+        0,
+        items.length - 1
+      );
+
+      console.log(curRow);
+
+      const newOrder = swap(order.current, curIndex, curRow);
+
+      // api.start(fn(newOrder, active, originalIndex, curIndex, y));
+      if (!active) order.current = newOrder;
+    }
+  );
+
   return (
     <List ref={ref} style={{ height: Math.max(...heights) }}>
       {transitions((style, item) => (
