@@ -4,7 +4,29 @@ import { animated } from "@react-spring/web";
 
 type IContainer = {
   open: boolean;
-};
+  paddingX?: number;
+  paddingY?: number;
+  marginX?: number;
+  marginY?: number;
+  gap?: number;
+  fullWidth?: boolean;
+  fullHeight?: boolean;
+} & Pick<
+  React.CSSProperties,
+  | "flexDirection"
+  | "justifyContent"
+  | "alignItems"
+  | "padding"
+  | "paddingLeft"
+  | "paddingRight"
+  | "paddingTop"
+  | "paddingBottom"
+  | "margin"
+  | "marginLeft"
+  | "marginRight"
+  | "marginTop"
+  | "marginBottom"
+>;
 
 export const Container = styled(animated.div)<IContainer>`
   position: relative;
@@ -67,6 +89,7 @@ export const FolderTitle = styled(animated.span)`
   position: absolute;
 
   top: -10px;
+  left: 10px;
 
   padding: 5px 10px;
   border-radius: 5px;

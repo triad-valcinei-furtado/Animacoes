@@ -12,6 +12,10 @@ import data from "./data";
 
 import { List } from "./styles";
 import { useDrag } from "react-use-gesture";
+import {
+  shuffleArrayBasedOnOrder,
+  swapFirstAndLast,
+} from "../../utils/shuffle";
 
 const fn =
   (order: number[], active = false, originalIndex = 0, curIndex = 0, y = 0) =>
@@ -45,6 +49,7 @@ function Masonry() {
   const [items, set] = useState(data);
   // Hook4: shuffle data every 2 seconds
   useEffect(() => {
+    // set(shuffle);
     // const t = setInterval(() => set(shuffle), 2000);
     // return () => clearInterval(t);
   }, []);
@@ -54,13 +59,13 @@ function Masonry() {
     let gridItems = items.map((child, i) => {
       const column = heights.indexOf(Math.min(...heights)); // Basic masonry-grid placing, puts tile into the smallest column using Math.min
       const x = (width / columns) * column; // x = container width / number of columns * column index,
-      const y = (heights[column] += child.height / 2) - child.height / 2; // y = it's just the height of the current column
+      const y = (heights[column] += 200 / 2) - 200 / 2; // y = it's just the height of the current column
       return {
         ...child,
         x,
         y,
         width: width / columns,
-        height: child.height / 2,
+        height: 200 / 2,
       };
     });
     return [heights, gridItems];
@@ -78,36 +83,90 @@ function Masonry() {
   // Render the grid
 
   const order = useRef(gridItems.map((_, index) => index)); // Store indicies as a local ref, this represents the item order
+
   const [springs, api] = useSprings(gridItems.length, fn(order.current)); // Create springs, each corresponds to an item, controlling its transform, scale, etc.
 
   const bind = useDrag(
-    ({ args: [originalIndex], active, movement: [x, y] }) => {
+    ({
+      args: [originalIndex],
+      active,
+      movement: [x, y],
+      dragging,
+      _dragStarted,
+      down,
+    }) => {
       const curIndex = order.current.indexOf(originalIndex);
 
       const curRow = clamp(
-        Math.round((curIndex * 100 + y) / 100),
+        Math.round((curIndex * 200 + y) / 200),
         0,
-        items.length - 1
+        gridItems.length - 1
       );
 
-      console.log(curRow);
+      const curColumn = clamp(
+        Math.round((curIndex * 200 + x) / 200),
+        0,
+        gridItems.length - 1
+      );
 
       const newOrder = swap(order.current, curIndex, curRow);
 
-      // api.start(fn(newOrder, active, originalIndex, curIndex, y));
+      // console.log(items, "items");
+      // console.log(curIndex, "curIndex");
+      // console.log(order.current, "order.current");
+      // console.log(newOrder, "newOrder");
+
+      const shuffledArray = shuffleArrayBasedOnOrder(
+        items,
+        order.current,
+        newOrder
+      );
+
+      console.log(curRow);
+      // console.log(curColumn);
+
+      if (!down) {
+        // console.log(shuffledArray);
+        // set(shuffledArray);
+      }
+
       if (!active) order.current = newOrder;
     }
   );
 
+  const swapFirstAndLast = () => {
+    if (items.length < 2) {
+      return; // Não é possível fazer a troca em arrays com menos de 2 elementos
+    }
+
+    const newArray = [...items]; // Crie uma cópia do array para manter o estado imutável
+    const firstValue = newArray[0];
+    newArray[0] = newArray[newArray.length - 1];
+    newArray[newArray.length - 1] = firstValue;
+
+    set(newArray);
+  };
+
   return (
     <List ref={ref} style={{ height: Math.max(...heights) }}>
-      {transitions((style, item) => (
-        <a.div style={style}>
+      <button onClick={() => {}}>Swap</button>
+      <button
+        onClick={() => {
+          set(shuffle);
+        }}
+      >
+        Suffle
+      </button>
+      {transitions((style, item, _, index) => (
+        <a.div {...bind(index)} style={style}>
           <div
             style={{
-              backgroundImage: `url(${item.css}?auto=compress&dpr=2&h=500&w=500)`,
+              // backgroundImage: `url(${item.css}?auto=compress&dpr=2&h=500&w=500)`,
+              background: "red",
             }}
-          />
+          >
+            {item.id}
+          </div>
         </a.div>
       ))}
     </List>

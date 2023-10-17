@@ -1,75 +1,55 @@
-import React, { useState, useEffect, useRef, ReactNode } from "react";
+import * as React from "react";
+import styled from "styled-components";
+import { useSprings, animated } from "@react-spring/web";
 
-import {
-  useTransition,
-  useSpring,
-  useChain,
-  config,
-  useSpringRef,
-  useSprings,
-} from "@react-spring/web";
+import AppBlock from "./appBlock";
+import { animate, getIndex, getPositionToIndexMapping } from "./utils";
+import useDraggable from "../../utils/useDraggable";
+import { Stack } from "../../utils/styled";
 
-import { Container, FolderTitle, Item } from "./styles";
-import data from "../../data";
-import AppBlock from "../../../Blocks/appBlock";
-import {
-  animate,
-  getIndex,
-  getPositionToIndexMapping,
-} from "../../../Blocks/utils";
-import { AnimatedWrapper, AppWrapper } from "../../../Blocks";
-import useDraggable from "../../../../utils/useDraggable";
-
-const Folder = ({
-  name,
-
-  type,
-}: {
+export interface IAppList {
   name: string;
-  type: string;
-}) => {
-  const [open, set] = useState(false);
+  background: string;
+  width: number;
+  position: number;
+}
 
-  const springApi = useSpringRef();
-  const { size, ...rest } = useSpring({
-    ref: springApi,
-    config: config.stiff,
-    from: { size: "20%", background: "hotpink" },
-    to: {
-      size: open ? "70%" : "20%",
-      background: open ? "white" : "hotpink",
-    },
-  });
-  const transApi = useSpringRef();
+export const AnimatedWrapper = styled(animated.div)`
+  position: absolute;
+  border-radius: 4px;
+  background: transparent;
+`;
 
-  const textApi = useSpring({
-    ref: springApi,
-    from: { color: "#fff" },
-    to: {
-      color: open ? "#000" : "#fff",
-      background: open ? "white" : "hotpink",
-    },
-  });
+export const AppWrapper = styled(Stack)`
+  flex-grow: 2;
+  overflow: auto;
+  flex-wrap: wrap;
+  position: relative;
 
-  ////////////////////////
+  width: 100%;
+  height: 100%;
+`;
 
-  const totalBlocks = 30;
-  const multiWidth = false;
-  const rowSize = 9;
+const getColor = (i: number) => {
+  const colors = [
+    "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
+    "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
+    "linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)",
+    "linear-gradient(135deg, #c3cfe2 0%, #c3cfe2 100%)",
+  ];
 
-  const getColor = (i: number) => {
-    const colors = [
-      "linear-gradient(135deg, #f6d365 0%, #fda085 100%)",
-      "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-      "linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)",
-      "linear-gradient(135deg, #c3cfe2 0%, #c3cfe2 100%)",
-    ];
+  return colors[i % 4];
+};
 
-    return colors[i % 4];
-  };
+interface IProps {
+  rowSize: number;
+  multiWidth: boolean;
+  totalBlocks: number;
+}
 
+const QucikPick = ({ rowSize, multiWidth, totalBlocks }: IProps) => {
   const getApps = React.useCallback(() => {
-    const appsZ = new Array(totalBlocks).fill(1).map((a, i) => ({
+    const appsZ: IAppList[] = new Array(totalBlocks).fill(1).map((a, i) => ({
       width: Math.random() > 0.5 ? (multiWidth ? 2 : 1) : 1,
       position: -1,
       name: i + "",
@@ -84,52 +64,19 @@ const Folder = ({
   const order = React.useRef(
     apps.map((a, index) => ({ index, width: a.width, position: a.position }))
   );
+  const positionToIndexMap = React.useRef(
+    getPositionToIndexMapping(order.current, rowSize)
+  );
 
-  const transition = useTransition(open ? [1] : [], {
-    ref: transApi,
-    trail: 400 / 1,
-    from: { opacity: 0, scale: 0 },
-    enter: { opacity: 1, scale: 1 },
-    leave: { opacity: 0, scale: 0 },
-  });
+  // const positions = React.useRef(apps.map((a) => a.position));
+  const wrapperRef = React.useRef<HTMLDivElement>(null);
+  const startPosition = React.useRef({ x: 0, y: 0 });
+  const draggingIndex = React.useRef(-1);
 
   const [springs, setSprings] = useSprings(
     apps.length,
     animate(rowSize, order.current)
   );
-
-  // This will orchestrate the two animations above, comment the last arg and it creates a sequence
-  // useChain([springApi], [0, 0.4]);
-  useChain(open ? [springApi, transApi] : [transApi, springApi], [
-    0,
-    open ? 0.2 : 0.5,
-  ]);
-
-  const wrapperRef = useRef<HTMLDivElement>(null);
-
-  function useOutsideAlerter(ref: React.RefObject<HTMLDivElement>) {
-    useEffect(() => {
-      /**
-       * Alert if clicked on outside of element
-       */
-      function handleClickOutside(event: any) {
-        if (ref.current && !ref.current.contains(event.target)) {
-          set(false);
-        }
-      }
-      // Bind the event listener
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => {
-        // Unbind the event listener on clean up
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }, [ref]);
-  }
-
-  useOutsideAlerter(wrapperRef);
-
-  const startPosition = React.useRef({ x: 0, y: 0 });
-  const draggingIndex = React.useRef(-1);
 
   const onDragStart = React.useCallback((event: React.MouseEvent) => {
     startPosition.current = {
@@ -143,10 +90,6 @@ const Folder = ({
     single: true,
     onDragStart,
   });
-
-  const positionToIndexMap = React.useRef(
-    getPositionToIndexMapping(order.current, rowSize)
-  );
 
   React.useEffect(() => {
     if (!store?.elements?.id) {
@@ -270,61 +213,31 @@ const Folder = ({
   }, [store, clearStore, setSprings, rowSize]);
 
   return (
-    <Container
-      fullHeight
-      flexDirection="column"
-      open={open}
-      style={{
-        ...rest,
-        width: size,
-        height: size,
-      }}
-      onClick={() => set(true)}
-    >
-      <FolderTitle style={textApi}>{name}</FolderTitle>
-      {transition((style) => (
-        <AppWrapper ref={wrapperRef}>
-          {springs.map((props, i) => {
-            const dragId = String(i);
-            return (
-              <AnimatedWrapper
-                key={apps[i].name}
-                style={{ ...props, ...style }}
-              >
-                <AppBlock
-                  {...handlers}
-                  onMouseDown={(event) => {
-                    draggingIndex.current = i;
-                    handlers.onMouseDown(event, dragId);
-                  }}
-                  style={{
-                    width: 128 * apps[i].width - 8,
-                    height: 120,
-                    background: apps[i].background,
-                  }}
-                  name={dragId}
-                />
-              </AnimatedWrapper>
-            );
-          })}
-        </AppWrapper>
-      ))}
-
-      {/* {springs.map((props, i) => {
-        const dragId = apps[i].name;
-        return (
-          <Item style={{ ...props }}>
-            <div className="item">
-              <img
-                src={`https://wildcard.codestuff.io/${type}/100/100`}
-                alt=""
+    <Stack style={{ height: 400 }} fullHeight flexDirection="column">
+      <AppWrapper ref={wrapperRef}>
+        {springs.map((props, i) => {
+          const dragId = String(i);
+          return (
+            <AnimatedWrapper key={apps[i].name} style={props}>
+              <AppBlock
+                {...handlers}
+                onMouseDown={(event) => {
+                  draggingIndex.current = i;
+                  handlers.onMouseDown(event, dragId);
+                }}
+                style={{
+                  width: 128 * apps[i].width - 8,
+                  height: 120,
+                  background: apps[i].background,
+                }}
+                name={dragId}
               />
-            </div>
-          </Item>
-        );
-      })} */}
-    </Container>
+            </AnimatedWrapper>
+          );
+        })}
+      </AppWrapper>
+    </Stack>
   );
 };
 
-export default Folder;
+export default QucikPick;

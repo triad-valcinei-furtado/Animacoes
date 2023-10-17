@@ -4,8 +4,8 @@ import { Wrapper } from "./styles";
 const Folders = () => {
   return (
     <Wrapper>
-      <Folder name="Cachorros" type="dog" />
-      <Folder name="Gatos" type="cat" />
+      {/* <Folder name="Cachorros" type="dog" /> */}
+      <Folder name="Cachorros" type="cat" />
       {/* <Folder name="Coelhos" />
       <Folder name="Ratos" /> */}
     </Wrapper>
